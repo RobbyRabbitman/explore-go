@@ -1,9 +1,8 @@
 package main
 
-import (
-	"explore-go/internals/types"
-)
+import "explore-go/internals/concurrency"
 
 func main() {
-	types.PrintZeroValues()
+	//types.PrintZeroValues()
+	concurrency.Greet(4)
 }
