@@ -1,6 +1,12 @@
 package concurrency
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+	"runtime"
+	"sync"
+	"time"
+)
 
 // channels are a mechanism for goruotines to communicate with each other.
 // channels are created with the make function.
@@ -43,5 +49,57 @@ func Sum(s ...int) int {
 	} else {
 		return Sum(s1...) + Sum(s2...)
 	}
+
+}
+
+func ConcurrentParallelSequential() {
+	url := "https://jsonplaceholder.typicode.com/todos"
+
+	threads := func() int {
+		maxProcs := runtime.GOMAXPROCS(0)
+		numCPU := runtime.NumCPU()
+		if maxProcs < numCPU {
+			return maxProcs
+		}
+		return numCPU
+	}()
+	number := threads * 2
+	fmt.Printf("Max Parallel: %v, Requests: %v\n", threads, number)
+	start := time.Now()
+	result := make([]time.Duration, number)
+	func() {
+		var wg sync.WaitGroup
+		wg.Add(number)
+		buffer := make(chan time.Duration, number)
+		for i := 1; i < number+1; i++ {
+			go func(i *int) {
+				x := time.Now()
+				http.Get(fmt.Sprintf("%v/%v", url, *i))
+				buffer <- time.Since(x)
+				wg.Done()
+			}(&i)
+		}
+		go func() {
+			wg.Wait()
+			close(buffer)
+		}()
+		index := 0
+		for time := range buffer {
+			result[index] = time
+			index++
+		}
+
+	}()
+	fmt.Printf("Concurrent (%v)\nEach Request Function %v\n\n", time.Since(start), result)
+
+	start = time.Now()
+	func() {
+		for i := 1; i < number+1; i++ {
+			x := time.Now()
+			http.Get(fmt.Sprintf("%v/%v", url, i))
+			result[i-1] = time.Since(x)
+		}
+	}()
+	fmt.Printf("Sequentiel (%v)\nEach Request Function %v\n\n", time.Since(start), result)
 
 }
